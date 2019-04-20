@@ -48,6 +48,9 @@ var timer = {
       if (timer.currentTime < 11) {
         timer.timerSpace.css("font-weight", "bold");
         timer.timerSpace.css("color", "red");
+      } else {
+        timer.timerSpace.css("color", "black");
+        timer.timerSpace.css("font-weight", "normal");
       }
       timer.currentTime--;
     }, 1000);
@@ -63,13 +66,28 @@ var game = {
       console.log(game.playerCount);
       $("#king-name").text(snapshot.child("kingName").val());
       $("#challenger-name").text(snapshot.child("challengerName").val());
-      if ((player.king = true)) {
+      if (player.king) {
         player.enemyChoice = snapshot.child("challengerChoice").val();
       } else {
         player.enemyChoice = snapshot.child("kingChoice").val();
         player.spectatorChoice = snapshot.child("challengerChoice").val();
       }
     });
+    if (game.playerCount === 2) {
+      database
+        .ref()
+        .onDisconnect()
+        .update({
+          playerCount: 1
+        });
+    } else if (game.playerCount === 1) {
+      database
+        .ref()
+        .onDisconnect()
+        .update({
+          playerCount: 0
+        });
+    }
     // possible fix for people disconnecting?
   },
   playButtonHandler: function() {
@@ -151,6 +169,7 @@ var player = {
   enemyChoice: "nothing",
   spectatorChoice: "nothing",
   initializePlayer: function() {
+    console.log(player.king);
     if (game.playerCount < 1) {
       player.king = true;
     }
@@ -158,7 +177,8 @@ var player = {
     database.ref().update({
       playerCount: game.playerCount
     });
-    if (player.king === true) {
+    console.log(player.king);
+    if (player.king) {
       database.ref().update({
         kingName: player.name //stores playername in database for all to see
       });
@@ -220,7 +240,7 @@ var player = {
   onEliminated: function() {
     game.playerCount--;
     database.ref().update({
-      playerCount: game.playerCount
+      playerCount: game.playerCount // will need to change
     });
     game.playButtonHandler();
     player.king = false;
