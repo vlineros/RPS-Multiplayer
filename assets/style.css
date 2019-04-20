@@ -1,0 +1,27 @@
+.navbar-nav {
+  flex-direction: row;
+}
+.nav-item {
+  margin: 0px 5px 0px;
+}
+/* NEED TO TWEAK MAX-WIDTH OF PLAYER-CARDS 
+  give chat space a border
+*/
+#bet-button {
+  display: inline-block;
+}
+#play-button {
+  display: none;
+}
+.modal {
+  text-align: center;
+  display: none;
+  z-index: 1;
+  top: 25vh;
+}
+ul {
+  list-style: none;
+}
+h1 {
+  visibility: hidden;
+}
