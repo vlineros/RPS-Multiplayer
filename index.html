@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="assets/style.css" />
     <title>RPS Multiplayer Game</title>
   </head>
-  <body>
+  <body onunload="player.onEliminated()">
     <nav class="navbar bg-light">
       <div class="container">
         <a class="navbar-brand">Rock Paper Scissors</a>
@@ -33,7 +33,7 @@
             <div class="modal-body">
               <p>What's your name?</p>
               <form>
-                <input type="text" id="name-data" />
+                <input autocomplete="off" type="text" id="name-data" />
                 <button id="name-submit">Send</button>
               </form>
             </div>
@@ -87,10 +87,12 @@
             </div>
           </div>
           <div class="col-4">
-            <div id="chat-space">Chat Space</div>
+            <div>Chat Space</div>
             <form>
-              <input type="text" />
+              <input autocomplete="off" id="chat-input" type="text" />
+              <button id="chat-submit">Enter</button>
             </form>
+            <div id="chat-space"></div>
           </div>
         </div>
         <div class="row" id="spectator-space">

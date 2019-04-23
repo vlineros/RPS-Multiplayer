@@ -36,7 +36,7 @@ var timer = {
   currentTime: 0,
   timerSpace: $("#timer-space"),
   startTime: function() {
-    timer.currentTime = 25;
+    timer.currentTime = 60;
     clearInterval(interval);
     var interval = setInterval(function() {
       timer.timerSpace.text(timer.currentTime);
@@ -44,6 +44,7 @@ var timer = {
         clearInterval(interval);
         game.checkChoices();
         game.hideButtons();
+        timer.resetTime(interval);
       }
       if (timer.currentTime < 11) {
         timer.timerSpace.css("font-weight", "bold");
@@ -54,41 +55,64 @@ var timer = {
       }
       timer.currentTime--;
     }, 1000);
+  },
+  resetTime: function(interval) {
+    clearInterval(interval);
+    timer.timerSpace.text("");
+    database.ref().update({
+      timerOn: false
+    });
   }
 };
 // *********************************************************************************************************
 var game = {
   playerCount: 0,
   playButton: $("#play-button"),
-  updatePlayerInfo: function() {
+  timerOn: false,
+  updateDataInfo: function() {
     database.ref().on("value", function(snapshot) {
       game.playerCount = snapshot.child("playerCount").val();
       console.log(game.playerCount);
       $("#king-name").text(snapshot.child("kingName").val());
       $("#challenger-name").text(snapshot.child("challengerName").val());
+      game.timerOn = snapshot.child("timerOn").val();
+      if (game.timerOn === true) {
+        timer.startTime();
+      }
       if (player.king) {
         player.enemyChoice = snapshot.child("challengerChoice").val();
       } else {
         player.enemyChoice = snapshot.child("kingChoice").val();
         player.spectatorChoice = snapshot.child("challengerChoice").val();
       }
+      var message = $("<p>").text(
+        player.name + ": " + snapshot.child("chatMessage").val()
+      );
+      chat.chatRoom.prepend(message);
     });
-    if (game.playerCount === 2) {
-      database
-        .ref()
-        .onDisconnect()
-        .update({
-          playerCount: 1
-        });
-    } else if (game.playerCount === 1) {
-      database
-        .ref()
-        .onDisconnect()
-        .update({
-          playerCount: 0
-        });
-    }
-    // possible fix for people disconnecting?
+
+    // if (game.playerCount > 0) {
+    //   game.playerCount = 0;
+    //   database.ref().update({
+    //     playerCount: game.playerCount
+    //   });
+    // }
+    // if (game.playerCount === 2) {
+    //   database
+    //     .ref()
+    //     .onDisconnect()
+    //     .update({
+    //       playerCount: 1
+    //     });
+    // } else if (game.playerCount === 1) {
+    //   database
+    //     .ref()
+    //     .onDisconnect()
+    //     .update({
+    //       playerCount: 0
+    //     });
+    // }
+    // // possible fix for people disconnecting?
   },
   playButtonHandler: function() {
     //in future create an array of spectators then on turn reveal play button
@@ -113,6 +137,9 @@ var game = {
   timerCheck: function() {
     if (game.playerCount > 1) {
       timer.startTime();
+      database.ref().update({
+        timerOn: true
+      });
     }
   },
   hideButtons: function() {
@@ -147,6 +174,9 @@ var game = {
       player.onEliminated();
     } else {
       timer.startTime();
+      database.ref().update({
+        timerOn: true
+      });
     }
     database.ref().update({
       kingChoice: "",
@@ -188,6 +218,10 @@ var player = {
       database.ref().update({
         challengerName: player.name // updatePlayerInfo handles actually printing info to sheet
       });
+      timer.startTime();
+      database.ref().update({
+        timerOn: true
+      });
       player.choiceSpace = $("#challenger-choice-space");
       player.enemyChoiceSpace = $("#king-choice-space");
     }
@@ -204,7 +238,7 @@ var player = {
       "<button class='choices' data-choice='scissor'>Scissors</button>"
     ).appendTo($("#button-space"));
     player.choiceHandler();
-    game.timerCheck(); //looks to see if timer is ok to start based on playerCount
+    game.timerCheck();
   },
   nameAsk: function() {
     //try to store name on local storage
@@ -238,25 +272,45 @@ var player = {
     });
   },
   onEliminated: function() {
-    game.playerCount--;
-    database.ref().update({
-      playerCount: game.playerCount // will need to change
-    });
-    game.playButtonHandler();
-    player.king = false;
-    player.myChoice = "nothing";
-    player.winstreak = 0;
-    player.enemyChoice = "nothing";
-    player.spectatorChoice = "nothing";
-    player.lives = 3;
+    if (game.playerCount > 0) {
+      game.playerCount--;
+      database.ref().update({
+        playerCount: game.playerCount
+      });
+      game.playButtonHandler();
+      player.king = false;
+      player.myChoice = "nothing";
+      player.winstreak = 0;
+      player.enemyChoice = "nothing";
+      player.spectatorChoice = "nothing";
+      player.lives = 3;
+      timer.resetTime();
+    }
   }
   // when player eliminated reduce playerCount by 1/ remove play buttons/ and show play button to others
 };
 // ***************************************************************************************************************
+var chat = {
+  chatRoom: $("#chat-space"),
+  chatInput: $("#chat-input"),
+  chatSubmit: $("#chat-submit"),
+  sendMessage: function() {
+    var message = chat.chatInput.val().trim();
+    database.ref().update({
+      chatMessage: message
+    });
+    chat.chatInput.val("");
+  }
+};
+// ***************************************************************************************************************
 $(document).ready(function() {
   player.nameAsk();
-  game.updatePlayerInfo();
+  game.updateDataInfo();
   game.playButtonHandler();
+  chat.chatSubmit.on("click", function(event) {
+    event.preventDefault();
+    chat.sendMessage();
+  });
 });
 // NEED TO AUTHORIZE ONLY SPECIFIC USER IDS TO WRITE TO /MAINPLAYERCHOICES (IN FIREBASE RULES)
 // *****************************************ANYTHING NOT ON THE DATABASE IS NOT SHARED ******************************************
