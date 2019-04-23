@@ -33,10 +33,10 @@ var database = firebase.database();
 // *********************************************************************************************************
 var timer = {
   //put timer info on database?
-  currentTime: 0,
+  currentTime: 60,
   timerSpace: $("#timer-space"),
   startTime: function() {
-    timer.currentTime = 60;
+    // timer.currentTime = 60;
     clearInterval(interval);
     var interval = setInterval(function() {
       timer.timerSpace.text(timer.currentTime);
@@ -58,6 +58,7 @@ var timer = {
   },
   resetTime: function(interval) {
     clearInterval(interval);
+    timer.currentTime = 60;
     timer.timerSpace.text("");
     database.ref().update({
       timerOn: false
@@ -76,7 +77,7 @@ var game = {
       $("#king-name").text(snapshot.child("kingName").val());
       $("#challenger-name").text(snapshot.child("challengerName").val());
       game.timerOn = snapshot.child("timerOn").val();
-      if (game.timerOn === true) {
+      if (game.timerOn === true && timer.currentTime === 60) {
         timer.startTime();
       }
       if (player.king) {
@@ -136,7 +137,7 @@ var game = {
   },
   timerCheck: function() {
     if (game.playerCount > 1) {
-      timer.startTime();
+      //timer.startTime();
       database.ref().update({
         timerOn: true
       });
@@ -173,7 +174,7 @@ var game = {
       console.log("your out!");
       player.onEliminated();
     } else {
-      timer.startTime();
+      //timer.startTime();
       database.ref().update({
         timerOn: true
       });
@@ -218,7 +219,7 @@ var player = {
       database.ref().update({
         challengerName: player.name // updatePlayerInfo handles actually printing info to sheet
       });
-      timer.startTime();
+      //timer.startTime();
       database.ref().update({
         timerOn: true
       });
@@ -296,10 +297,12 @@ var chat = {
   chatSubmit: $("#chat-submit"),
   sendMessage: function() {
     var message = chat.chatInput.val().trim();
-    database.ref().update({
-      chatMessage: message
-    });
-    chat.chatInput.val("");
+    if (message !== "") {
+      database.ref().update({
+        chatMessage: message
+      });
+      chat.chatInput.val("");
+    }
   }
 };
 // ***************************************************************************************************************
