@@ -10,9 +10,9 @@
 #bet-button {
   display: inline-block;
 }
-#play-button {
+/* #play-button {
   display: none;
-}
+} */
 .modal {
   text-align: center;
   display: none;
@@ -22,6 +22,6 @@
 ul {
   list-style: none;
 }
-h1 {
+h4 {
   visibility: hidden;
 }

@@ -1,22 +1,9 @@
-// somehow restrict the input to only 2 people playing on the site (the rest watch)
 // people watching can bet on who wins
-// timer counts down to let players know they need to give an input
-// capture user key input and store in a variable on the server
-// print the variable to the screen from the server
-// compare user1 input with user 2 and decide winner
 // print win/lose message
-// update win counts and if one player has beaten another 3 times the loser is taken off the server (<- maybe)
-// NEED TO INITIALIZE FIREBASE
-// give spectators class (spectator)
 
 // possible functions needed:
-//  create new spectator when new id joins server
-//  countdown timer to vote rock paper or scissors
-//  calculate win between two players
 //  resolve bets of spectators
-//  set up objects for player cards and store on server for re-login
-//  try to use objects as much as possible
-// LOOK INTO IFRAMES FOR MAKING THE LIST OF SPECTATORS SCROLLABLE
+// LOOK INTO IFRAMES FOR MAKING THE LIST OF SPECTATORS SCROLLABLE/CHAT
 
 var config = {
   apiKey: "AIzaSyCALSaL8nysc9Qbku7sitDhFW4eCSknEaA",
@@ -32,19 +19,19 @@ var database = firebase.database();
 
 // *********************************************************************************************************
 var timer = {
-  //put timer info on database?
-  currentTime: 60,
+  //                                                          TIMER DELAYED ON ONE OF THE PLAYERS AFTER INITIAL CYCLE
+  currentTime: 0,
   timerSpace: $("#timer-space"),
+  interval: 0,
   startTime: function() {
-    // timer.currentTime = 60;
-    clearInterval(interval);
-    var interval = setInterval(function() {
+    timer.currentTime = 30;
+    clearInterval(timer.interval);
+    timer.interval = setInterval(function() {
+      console.log(timer.currentTime);
+      game.timerCheck();
       timer.timerSpace.text(timer.currentTime);
-      if (timer.currentTime === 0) {
-        clearInterval(interval);
+      if (timer.currentTime < 1) {
         game.checkChoices();
-        game.hideButtons();
-        timer.resetTime(interval);
       }
       if (timer.currentTime < 11) {
         timer.timerSpace.css("font-weight", "bold");
@@ -58,66 +45,46 @@ var timer = {
   },
   resetTime: function(interval) {
     clearInterval(interval);
-    timer.currentTime = 60;
+    timer.currentTime = 0;
     timer.timerSpace.text("");
-    database.ref().update({
+    database.ref("timer").update({
       timerOn: false
     });
   }
 };
 // *********************************************************************************************************
 var game = {
-  playerCount: 0,
   playButton: $("#play-button"),
   timerOn: false,
   updateDataInfo: function() {
     database.ref().on("value", function(snapshot) {
-      game.playerCount = snapshot.child("playerCount").val();
-      console.log(game.playerCount);
       $("#king-name").text(snapshot.child("kingName").val());
       $("#challenger-name").text(snapshot.child("challengerName").val());
-      game.timerOn = snapshot.child("timerOn").val();
-      if (game.timerOn === true && timer.currentTime === 60) {
-        timer.startTime();
-      }
       if (player.king) {
         player.enemyChoice = snapshot.child("challengerChoice").val();
       } else {
         player.enemyChoice = snapshot.child("kingChoice").val();
         player.spectatorChoice = snapshot.child("challengerChoice").val();
       }
-      var message = $("<p>").text(
-        player.name + ": " + snapshot.child("chatMessage").val()
-      );
+    });
+    database.ref("chat").on("value", function(chatsnap) {
+      var message = $("<p>").text(chatsnap.child("chatMessage").val());
       chat.chatRoom.prepend(message);
     });
-
-    // if (game.playerCount > 0) {
-    //   game.playerCount = 0;
-    //   database.ref().update({
-    //     playerCount: game.playerCount
-    //   });
-    // }
-    // if (game.playerCount === 2) {
-    //   database
-    //     .ref()
-    //     .onDisconnect()
-    //     .update({
-    //       playerCount: 1
-    //     });
-    // } else if (game.playerCount === 1) {
-    //   database
-    //     .ref()
-    //     .onDisconnect()
-    //     .update({
-    //       playerCount: 0
-    //     });
-    // }
-    // // possible fix for people disconnecting?
+    database.ref("timer").on("value", function(timerSnap) {
+      game.timerOn = timerSnap.child("timerOn").val();
+      if (game.timerOn === true && timer.currentTime === 0) {
+        timer.startTime();
+      } else if (game.timerOn === false) {
+        timer.resetTime();
+      }
+    });
   },
   playButtonHandler: function() {
     //in future create an array of spectators then on turn reveal play button
-    if (game.playerCount < 2) {
+    if ($("#king-name").text() !== "" || $("#challenger-name").text() !== "") {
+      game.playButton.hide();
+    } else {
       if (player.myChoice === "nothing") {
         setTimeout(function() {
           game.playButton.show();
@@ -127,8 +94,6 @@ var game = {
           game.playButton.show();
         }, 5000);
       }
-    } else {
-      game.playButton.hide();
     }
     game.playButton.on("click", function() {
       player.initializePlayer(); //possible bug with multiple people clicking play at once?
@@ -136,48 +101,61 @@ var game = {
     });
   },
   timerCheck: function() {
-    if (game.playerCount > 1) {
-      //timer.startTime();
-      database.ref().update({
+    if ($("#king-name").text() !== "" && $("#challenger-name").text() !== "") {
+      database.ref("timer").update({
         timerOn: true
+      });
+    } else {
+      database.ref("timer").update({
+        timerOn: false
       });
     }
   },
   hideButtons: function() {
-    //hide guess buttons while showing answers
-    $(".choices").hide();
-    setTimeout(function() {
-      $(".choices").show();
-    }, 5000);
+    //hide guess buttons player loss
+    $(".choices").remove();
   },
   checkChoices: function() {
+    //                                                                  ONLY PRINTS RESULTS TO ONE PLAYER
+    timer.resetTime(timer.interval);
+    console.log(player.myChoice);
+    console.log(player.enemyChoice);
+    console.log(game.timerOn);
     if (player.myChoice !== "nothing") {
-      player.choiceSpace.text(player.myChoice);
+      player.myChoiceSpace.text(player.myChoice);
       player.enemyChoiceSpace.text(player.enemyChoice);
       if (player.enemyChoice === player.myChoice) {
+        player.myResultSpace.text("TIE");
+        player.enemyResultSpace.text("TIE");
         console.log("tie");
       } else if (
         (player.enemyChoice === "rock" && player.myChoice === "paper") ||
         (player.enemyChoice === "paper" && player.myChoice === "scissor") ||
         (player.enemyChoice === "scissor" && player.myChoice === "rock")
       ) {
+        player.myResultSpace.text("WINNER");
+        player.enemyResultSpace.text("LOSER");
+
         console.log("you win");
       } else {
+        player.myResultSpace.text("LOSER");
+        player.enemyResultSpace.text("WINNER");
         player.lives--;
         console.log("you lose");
+      }
+      player.myChoiceSpace.css("visibility", "visible");
+      player.enemyChoiceSpace.css("visibility", "visible");
+      player.myResultSpace.css("visibility", "visible");
+      player.enemyResultSpace.css("visibility", "visible");
+      if (player.lives === 0) {
+        console.log("your out!");
+        player.onEliminated();
+      } else {
+        game.timerCheck();
       }
     } else {
       $("#challenger-choice-space").text(player.spectatorChoice);
       $("#king-choice-space").text(player.enemyChoice);
-    }
-    if (player.lives === 0) {
-      console.log("your out!");
-      player.onEliminated();
-    } else {
-      //timer.startTime();
-      database.ref().update({
-        timerOn: true
-      });
     }
     database.ref().update({
       kingChoice: "",
@@ -187,44 +165,40 @@ var game = {
 };
 // ************************************************************************************************************
 var player = {
-  // create variable ID that stores whether king or not
   king: false,
   name: "",
+  nameSpace: $("#name-space"),
   winstreak: 0,
   overallWins: 0,
   overallLosses: 0,
   lives: 3,
-  choiceSpace: "",
+  myChoiceSpace: "",
   enemyChoiceSpace: "",
+  myResultSpace: "",
+  enemyResultSpace: "",
   myChoice: "nothing",
   enemyChoice: "nothing",
   spectatorChoice: "nothing",
   initializePlayer: function() {
-    console.log(player.king);
-    if (game.playerCount < 1) {
+    if ($("#king-name").text() === "") {
       player.king = true;
     }
-    game.playerCount++;
-    database.ref().update({
-      playerCount: game.playerCount
-    });
-    console.log(player.king);
     if (player.king) {
       database.ref().update({
         kingName: player.name //stores playername in database for all to see
       });
-      player.choiceSpace = $("#king-choice-space");
+      player.myChoiceSpace = $("#king-choice-space");
       player.enemyChoiceSpace = $("#challenger-choice-space");
+      player.myResultSpace = $("#king-result-space");
+      player.enemyResultSpace = $("#challenger-result-space");
     } else {
       database.ref().update({
         challengerName: player.name // updatePlayerInfo handles actually printing info to sheet
       });
-      //timer.startTime();
-      database.ref().update({
-        timerOn: true
-      });
-      player.choiceSpace = $("#challenger-choice-space");
+      player.myChoiceSpace = $("#challenger-choice-space");
       player.enemyChoiceSpace = $("#king-choice-space");
+      player.myResultSpace = $("#challenger-result-space");
+      player.enemyResultSpace = $("#king-result-space");
     }
     $("<p>")
       .text("It's your turn!")
@@ -249,65 +223,77 @@ var player = {
     modal.css("display", "block");
     nameSubmit.on("click", function(event) {
       event.preventDefault();
-      player.name = nameData.val();
-      modal.css("display", "none");
-      console.log(player.name);
+      if (nameData.val() !== "") {
+        player.name = nameData.val();
+        player.nameSpace.text(player.name + ":");
+        modal.css("display", "none");
+        console.log(player.name);
+      }
     });
   },
   choiceHandler: function() {
     $(document).on("click", ".choices", function() {
       var userChoice = $(this).attr("data-choice");
-      $(".choices").css("background-color", "light blue");
-      $(this).css("background-color", "dark blue");
+      $(".choices").css("background-color", "red");
+      $(this).css("background-color", "blue");
       console.log(userChoice);
       player.myChoice = userChoice;
-      if ((player.king = false)) {
+      if (player.king) {
         database.ref().update({
-          challengerChoice: userChoice
+          kingChoice: userChoice
         });
       } else {
         database.ref().update({
-          kingChoice: userChoice
+          challengerChoice: userChoice
         });
       }
     });
   },
   onEliminated: function() {
-    if (game.playerCount > 0) {
-      game.playerCount--;
+    if (player.king) {
       database.ref().update({
-        playerCount: game.playerCount
+        kingName: ""
       });
-      game.playButtonHandler();
-      player.king = false;
-      player.myChoice = "nothing";
-      player.winstreak = 0;
-      player.enemyChoice = "nothing";
-      player.spectatorChoice = "nothing";
-      player.lives = 3;
-      timer.resetTime();
+    } else {
+      database.ref().update({
+        challengerName: ""
+      });
     }
+    game.playButtonHandler();
+    player.king = false;
+    player.myChoice = "nothing";
+    player.winstreak = 0;
+    player.enemyChoice = "nothing";
+    player.spectatorChoice = "nothing";
+    player.lives = 3;
+    timer.resetTime();
   }
-  // when player eliminated reduce playerCount by 1/ remove play buttons/ and show play button to others
 };
 // ***************************************************************************************************************
 var chat = {
+  // PUT CHAT IN SESSION MEMORY? IFRAME THE CHAT SO IT DOESN'T EXTEND FOR ETERNITY
   chatRoom: $("#chat-space"),
   chatInput: $("#chat-input"),
   chatSubmit: $("#chat-submit"),
   sendMessage: function() {
     var message = chat.chatInput.val().trim();
     if (message !== "") {
-      database.ref().update({
-        chatMessage: message
+      database.ref("chat").update({
+        chatMessage: player.name + ": " + message
       });
       chat.chatInput.val("");
     }
+  },
+  initializeChat: function() {
+    database.ref("chat").update({
+      chatMessage: ""
+    });
   }
 };
 // ***************************************************************************************************************
 $(document).ready(function() {
   player.nameAsk();
+  chat.initializeChat();
   game.updateDataInfo();
   game.playButtonHandler();
   chat.chatSubmit.on("click", function(event) {
@@ -315,5 +301,5 @@ $(document).ready(function() {
     chat.sendMessage();
   });
 });
-// NEED TO AUTHORIZE ONLY SPECIFIC USER IDS TO WRITE TO /MAINPLAYERCHOICES (IN FIREBASE RULES)
+
 // *****************************************ANYTHING NOT ON THE DATABASE IS NOT SHARED ******************************************
