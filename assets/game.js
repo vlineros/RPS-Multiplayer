@@ -19,7 +19,7 @@ var database = firebase.database();
 
 // *********************************************************************************************************
 var timer = {
-  //                                                          TIMER DELAYED ON ONE OF THE PLAYERS AFTER INITIAL CYCLE
+  //    HOW TO FIX LATENCY?    TIMER DELAYED ON ONE OF THE PLAYERS SOMETIMES       ONE PLAYER CLEARS INTERVAL BEFORE OTHER GETS THERE?
   currentTime: 0,
   timerSpace: $("#timer-space"),
   interval: 0,
@@ -29,9 +29,18 @@ var timer = {
     timer.interval = setInterval(function() {
       console.log(timer.currentTime);
       game.timerCheck();
+      //if (player.MyChoice !== "nothing" && player.enemyChoice !== "")
       timer.timerSpace.text(timer.currentTime);
       if (timer.currentTime < 1) {
-        game.checkChoices();
+        // setTimeout(function() {
+        //   //game.checkChoices();
+        //   database.ref("choicing").update({
+        //     choicing: true
+        //   });
+        // }, 500);
+        database.ref("choicing").update({
+          choicing: true
+        });
       }
       if (timer.currentTime < 11) {
         timer.timerSpace.css("font-weight", "bold");
@@ -56,6 +65,7 @@ var timer = {
 var game = {
   playButton: $("#play-button"),
   timerOn: false,
+  choicing: false,
   updateDataInfo: function() {
     database.ref().on("value", function(snapshot) {
       $("#king-name").text(snapshot.child("kingName").val());
@@ -77,6 +87,13 @@ var game = {
         timer.startTime();
       } else if (game.timerOn === false) {
         timer.resetTime();
+      }
+    });
+    database.ref("choicing").on("value", function(choiceSnap) {
+      game.choicing = choiceSnap.child("choicing").val();
+      console.log("choicing-active");
+      if (game.choicing === true) {
+        game.checkChoices();
       }
     });
   },
@@ -116,11 +133,12 @@ var game = {
     $(".choices").remove();
   },
   checkChoices: function() {
-    //                                                                  ONLY PRINTS RESULTS TO ONE PLAYER
-    timer.resetTime(timer.interval);
+    //               PROBLEM WITH NOT MAKING A CHOICE  CHECK CHOICES NOT BEING FIRED BY CHALLENGER   ONLY PRINTS RESULTS TO ONE PLAYER
     console.log(player.myChoice);
     console.log(player.enemyChoice);
     console.log(game.timerOn);
+    console.log(timer.currentTime);
+    timer.resetTime(timer.interval);
     if (player.myChoice !== "nothing") {
       player.myChoiceSpace.text(player.myChoice);
       player.enemyChoiceSpace.text(player.enemyChoice);
@@ -161,6 +179,15 @@ var game = {
       kingChoice: "",
       challengerChoice: ""
     });
+    database.ref("choicing").update({
+      choicing: false
+    });
+    setTimeout(function() {
+      player.myChoiceSpace.css("visibility", "hidden");
+      player.enemyChoiceSpace.css("visibility", "hidden");
+      player.myResultSpace.css("visibility", "hidden");
+      player.enemyResultSpace.css("visibility", "hidden");
+    }, 3000);
   }
 };
 // ************************************************************************************************************
