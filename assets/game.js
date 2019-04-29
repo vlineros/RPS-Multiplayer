@@ -19,7 +19,7 @@ var database = firebase.database();
 
 // *********************************************************************************************************
 var timer = {
-  //    HOW TO FIX LATENCY?    TIMER DELAYED ON ONE OF THE PLAYERS SOMETIMES       ONE PLAYER CLEARS INTERVAL BEFORE OTHER GETS THERE?
+  //                                     TIMER CAN GET OUT OF SYNC
   currentTime: 0,
   timerSpace: $("#timer-space"),
   interval: 0,
@@ -29,15 +29,8 @@ var timer = {
     timer.interval = setInterval(function() {
       console.log(timer.currentTime);
       game.timerCheck();
-      //if (player.MyChoice !== "nothing" && player.enemyChoice !== "")
       timer.timerSpace.text(timer.currentTime);
       if (timer.currentTime < 1) {
-        // setTimeout(function() {
-        //   //game.checkChoices();
-        //   database.ref("choicing").update({
-        //     choicing: true
-        //   });
-        // }, 500);
         database.ref("choicing").update({
           choicing: true
         });
@@ -129,11 +122,11 @@ var game = {
     }
   },
   hideButtons: function() {
-    //hide guess buttons player loss
+    //hide guess buttons on player loss
     $(".choices").remove();
   },
   checkChoices: function() {
-    //               PROBLEM WITH NOT MAKING A CHOICE  CHECK CHOICES NOT BEING FIRED BY CHALLENGER   ONLY PRINTS RESULTS TO ONE PLAYER
+    //                            CHECK CHOICES SOMETIMES FIRES MULTIPLE FOR INDIVIDUAL PLAYER
     console.log(player.myChoice);
     console.log(player.enemyChoice);
     console.log(game.timerOn);
@@ -192,6 +185,7 @@ var game = {
 };
 // ************************************************************************************************************
 var player = {
+  //INCLUDE A BOOL VARIABLE FOR ISsPECTATOR?
   king: false,
   name: "",
   nameSpace: $("#name-space"),
@@ -277,6 +271,7 @@ var player = {
     });
   },
   onEliminated: function() {
+    game.hideButtons();
     if (player.king) {
       database.ref().update({
         kingName: ""
@@ -298,7 +293,7 @@ var player = {
 };
 // ***************************************************************************************************************
 var chat = {
-  // PUT CHAT IN SESSION MEMORY? IFRAME THE CHAT SO IT DOESN'T EXTEND FOR ETERNITY
+  // PUT CHAT IN SESSION MEMORY?
   chatRoom: $("#chat-space"),
   chatInput: $("#chat-input"),
   chatSubmit: $("#chat-submit"),

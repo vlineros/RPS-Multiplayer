@@ -25,3 +25,7 @@ ul {
 h4 {
   visibility: hidden;
 }
+#chat-space {
+  overflow: scroll;
+  max-height: 60vh;
+}
